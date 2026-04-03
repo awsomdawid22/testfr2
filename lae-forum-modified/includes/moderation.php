@@ -132,54 +132,69 @@ function getPlayerInfractions(string $search, bool $activeOnly = false): array {
 
 /**
  * Post a Discord embed to the mod-log channel via the MOD bot
+ * Professional, clean design without emoji clutter
  */
 function postModLogEmbed(array $infraction): ?string {
     if (!defined('MOD_BOT_ENABLED') || !MOD_BOT_ENABLED) return null;
     if (!defined('MOD_LOG_CHANNEL') || !MOD_LOG_CHANNEL) return null;
 
+    // Professional color scheme
     $colors = [
-        'ban'  => 0xE63946,  // red
-        'kick' => 0xC9A227,  // gold
-        'warn' => 0xF4A261,  // orange
-        'note' => 0x3D7EBF,  // blue
+        'ban'  => 0xDC2626,  // Deep red
+        'kick' => 0xD97706,  // Amber
+        'warn' => 0xEAB308,  // Yellow
+        'note' => 0x2563EB,  // Blue
     ];
-    $icons = [
-        'ban'  => '🔨',
-        'kick' => '👢',
-        'warn' => '⚠️',
-        'note' => '📝',
+    
+    // Action labels (no emojis)
+    $labels = [
+        'ban'  => 'BAN',
+        'kick' => 'KICK',
+        'warn' => 'WARNING',
+        'note' => 'STAFF NOTE',
     ];
+
     $type    = $infraction['type'];
-    $color   = $colors[$type] ?? 0x888888;
-    $icon    = $icons[$type]  ?? '•';
+    $color   = $colors[$type] ?? 0x6B7280;
+    $label   = $labels[$type] ?? strtoupper($type);
     $expires = $infraction['expires_at']
-        ? date('M j Y, g:i A', strtotime($infraction['expires_at'])) . ' UTC'
+        ? date('M j, Y \a\t g:i A', strtotime($infraction['expires_at'])) . ' UTC'
         : 'Permanent';
 
-    $fields = [
-        ['name' => 'Player',    'value' => $infraction['player_name'],    'inline' => true],
-        ['name' => 'Action',    'value' => strtoupper($type),             'inline' => true],
-        ['name' => 'ID',        'value' => '`' . $infraction['infraction_id'] . '`', 'inline' => true],
-        ['name' => 'Reason',    'value' => $infraction['reason'],         'inline' => false],
-        ['name' => 'Issued By', 'value' => $infraction['issued_by_name'], 'inline' => true],
-        ['name' => 'Via',       'value' => ucfirst($infraction['issued_via']), 'inline' => true],
-    ];
-
+    // Build description for cleaner layout
+    $desc = "**Player:** {$infraction['player_name']}\n";
+    $desc .= "**Case ID:** `{$infraction['infraction_id']}`\n";
     if ($infraction['player_identifier']) {
-        $fields[] = ['name' => 'Identifier', 'value' => '`' . $infraction['player_identifier'] . '`', 'inline' => true];
+        $desc .= "**Identifier:** `{$infraction['player_identifier']}`\n";
     }
+    $desc .= "\n**Reason**\n{$infraction['reason']}";
+
+    $fields = [];
+    
+    // Issuer info in compact fields
+    $fields[] = ['name' => 'Issued By', 'value' => $infraction['issued_by_name'], 'inline' => true];
+    $fields[] = ['name' => 'Source', 'value' => ucfirst($infraction['issued_via']), 'inline' => true];
+    
     if ($type === 'ban') {
-        $fields[] = ['name' => 'Expires', 'value' => $expires, 'inline' => false];
+        $fields[] = ['name' => 'Expires', 'value' => $expires, 'inline' => true];
     }
+    
     if ($infraction['notes']) {
-        $fields[] = ['name' => 'Staff Note', 'value' => $infraction['notes'], 'inline' => false];
+        $fields[] = ['name' => 'Staff Notes', 'value' => $infraction['notes'], 'inline' => false];
     }
 
     $embed = [
-        'title'       => "{$icon} " . strtoupper($type) . " — " . $infraction['player_name'],
+        'author'      => [
+            'name' => 'LAE Moderation',
+            'icon_url' => defined('SITE_URL') ? SITE_URL . '/public/images/president-seal.png' : null,
+        ],
+        'title'       => $label . ' | ' . $infraction['player_name'],
+        'description' => $desc,
         'color'       => $color,
         'fields'      => $fields,
-        'footer'      => ['text' => 'LAE Moderation System · ' . SITE_URL],
+        'footer'      => [
+            'text' => 'Los Angeles Experience',
+        ],
         'timestamp'   => date('c', strtotime($infraction['created_at'])),
     ];
 

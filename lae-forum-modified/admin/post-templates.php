@@ -26,7 +26,7 @@ $templates = [
         'color' => '#c9a227',
         'desc'  => 'General community-wide announcement with presidential seal',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][size=2][b]OFFICIAL ANNOUNCEMENT[/b][/size]
 [color=#c9a227]━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[/color][/center]
 
@@ -54,7 +54,7 @@ BBQ,
         'color' => '#37b679',
         'desc'  => 'Patch notes / update release with version tracking',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#37b679][size=2][b]SERVER UPDATE[/b][/size][/color]
 [b]Version [X.X.X] — [DATE][/b][/center]
 
@@ -94,7 +94,7 @@ BBQ,
         'color' => '#e63946',
         'desc'  => 'Formal notice of rule additions, removals, or amendments',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#e63946][size=2][b]COMMUNITY RULE AMENDMENT[/b][/size][/color]
 [b]Effective: [DATE][/b][/center]
 
@@ -129,7 +129,7 @@ BBQ,
         'color' => '#8b6fd4',
         'desc'  => 'Public disciplinary notice for community actions',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#8b6fd4][size=2][b]OFFICIAL DISCIPLINARY STATEMENT[/b][/size][/color][/center]
 
 [hr]
@@ -165,7 +165,7 @@ BBQ,
         'color' => '#3d7ebf',
         'desc'  => 'Periodic community state-of-the-union style address',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#3d7ebf][size=2][b]STATE OF THE COMMUNITY ADDRESS[/b][/size][/color]
 [b][MONTH / QUARTER / YEAR][/b][/center]
 
@@ -211,7 +211,7 @@ BBQ,
         'color' => '#f4a261',
         'desc'  => 'Announce server events, meetups, competitions',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#f4a261][size=2][b]COMMUNITY EVENT ANNOUNCEMENT[/b][/size][/color][/center]
 
 [hr]
@@ -254,7 +254,7 @@ BBQ,
         'color' => '#c9a227',
         'desc'  => 'Announce staff promotions or new appointments',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#c9a227][size=2][b]STAFF APPOINTMENT NOTICE[/b][/size][/color][/center]
 
 [hr]
@@ -292,7 +292,7 @@ BBQ,
         'color' => '#37b679',
         'desc'  => 'Public apology or correction of a previous statement',
         'code'  => <<<BBQ
-[center][img]{$SEAL_URL}[/img][/center]
+[center][img=80x80]{$SEAL_URL}[/img][/center]
 [center][color=#37b679][size=2][b]STATEMENT OF CORRECTION[/b][/size][/color][/center]
 
 [hr]
