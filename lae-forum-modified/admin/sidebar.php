@@ -41,6 +41,7 @@ function adminLink($href, $icon, $label, $current): string {
     <?php if ($isAdmin): ?>
     <div class="admin-sidebar-title" style="margin-top:10px">Administration</div>
     <?= adminLink('roles.php', 'fa-shield-halved', 'Roles & Permissions', $adminPage) ?>
+    <?= adminLink('post-templates.php', 'fa-scroll', 'Post Templates', $adminPage) ?>
     <?= adminLink('audit.php', 'fa-clipboard-list', 'Audit Log', $adminPage) ?>
     <?= adminLink('settings.php', 'fa-gear', 'Site Settings', $adminPage) ?>
     <?php endif; ?>

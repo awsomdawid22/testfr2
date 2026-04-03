@@ -69,6 +69,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+
+        // Banner upload
+        if ($action === 'upload_banner' && isset($_FILES['banner'])) {
+            $file = $_FILES['banner'];
+            if ($file['error'] === UPLOAD_ERR_OK) {
+                $maxBannerSize = 5 * 1024 * 1024; // 5MB for banners
+                $allowedBannerTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                if ($file['size'] > $maxBannerSize) {
+                    $error = 'Banner too large (max 5MB).';
+                } elseif (!in_array($file['type'], $allowedBannerTypes)) {
+                    $error = 'Invalid file type. Use JPG, PNG, or WebP.';
+                } else {
+                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                    $dir = __DIR__ . '/assets/img/banners/';
+                    if (!is_dir($dir)) mkdir($dir, 0755, true);
+                    $filename = 'banner_' . $currentUser['id'] . '_' . time() . '.' . $ext;
+                    if (move_uploaded_file($file['tmp_name'], $dir . $filename)) {
+                        $db->prepare("UPDATE users SET banner = ? WHERE id = ?")
+                           ->execute(['assets/img/banners/' . $filename, $currentUser['id']]);
+                        // Redirect back to profile page after successful banner upload
+                        header('Location: ' . SITE_URL . '/profile.php?user=' . $currentUser['id'] . '&msg=banner_updated');
+                        exit;
+                    } else {
+                        $error = 'Upload failed. Check file permissions.';
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -98,6 +126,29 @@ include __DIR__ . '/includes/header.php';
                         <button type="submit" class="btn btn-accent btn-sm"><i class="fas fa-upload"></i> Upload</button>
                     </div>
                     <div class="form-hint">Max 2MB. JPG, PNG, GIF, or WebP. Square images recommended.</div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Profile Banner -->
+        <div class="card">
+            <div class="card-header"><h3><i class="fas fa-panorama"></i> Profile Banner</h3></div>
+            <div style="padding:20px">
+                <?php 
+                $bannerUrl = null;
+                if (!empty($currentUser['banner'])) {
+                    $bannerUrl = SITE_URL . '/' . ltrim($currentUser['banner'], '/');
+                }
+                ?>
+                <div style="margin-bottom:16px;border-radius:var(--radius);overflow:hidden;height:120px;background:<?= $bannerUrl ? "url('" . e($bannerUrl) . "') center/cover" : 'linear-gradient(135deg,var(--bg1),var(--bg3))' ?>"></div>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf" value="<?= generateCSRF() ?>">
+                    <input type="hidden" name="action" value="upload_banner">
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                        <input type="file" name="banner" accept="image/jpeg,image/png,image/webp" class="form-input" style="flex:1">
+                        <button type="submit" class="btn btn-accent btn-sm"><i class="fas fa-upload"></i> Upload Banner</button>
+                    </div>
+                    <div class="form-hint">Max 5MB. JPG, PNG, or WebP. Recommended size: 1200x300 pixels.</div>
                 </form>
             </div>
         </div>

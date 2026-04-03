@@ -68,6 +68,12 @@ include __DIR__ . '/includes/header.php';
 
 <div class="profile-page">
 
+    <?php if (isset($_GET['msg']) && $_GET['msg'] === 'banner_updated'): ?>
+    <div class="container" style="padding-bottom:0">
+        <div class="alert alert-success" data-auto-dismiss><i class="fas fa-check-circle"></i> Profile banner updated successfully!</div>
+    </div>
+    <?php endif; ?>
+
     <!-- Banner -->
     <div class="profile-banner" style="<?= $bannerUrl ? "background-image:url('" . e($bannerUrl) . "')" : 'background:linear-gradient(135deg,var(--bg1),var(--bg3))' ?>">
         <?php if ($isOwnProfile): ?>
