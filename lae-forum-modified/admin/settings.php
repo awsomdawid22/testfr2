@@ -30,6 +30,7 @@ $defaults = [
     'fivem_connect'       => 'fivem://connect/play.laexperience.com',
     'server_ip'           => 'play.laexperience.com',
     'fivem_secret'        => 'CHANGE_THIS_TO_A_RANDOM_SECRET_KEY',
+    'fivem_mod_api_key'   => '',
     'maintenance_mode'    => '0',
     'registrations_open'  => '1',
     'max_avatar_size_mb'  => '2',
@@ -39,7 +40,17 @@ $defaults = [
 ];
 $settings = array_merge($defaults, $settings);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCSRF($_POST['csrf'] ?? '')) {
+// Handle API key generation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_api_key']) && verifyCSRF($_POST['csrf'] ?? '')) {
+    $newKey = 'lae_' . bin2hex(random_bytes(24));
+    $settings['fivem_mod_api_key'] = $newKey;
+    $content = "<?php\nreturn " . var_export($settings, true) . ";\n";
+    file_put_contents($settingsFile, $content);
+    logAudit($currentUser['id'], 'generate_api_key', null, null, 'Generated new FiveM Moderation API key');
+    $message = 'New API key generated successfully.';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['generate_api_key']) && verifyCSRF($_POST['csrf'] ?? '')) {
     $new = [
         'site_name'          => trim($_POST['site_name'] ?? 'Los Angeles Experience'),
         'site_tagline'       => trim($_POST['site_tagline'] ?? ''),
@@ -50,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && verifyCSRF($_POST['csrf'] ?? '')) {
         'fivem_connect'      => trim($_POST['fivem_connect'] ?? ''),
         'server_ip'          => trim($_POST['server_ip'] ?? ''),
         'fivem_secret'       => trim($_POST['fivem_secret'] ?? 'CHANGE_THIS_TO_A_RANDOM_SECRET_KEY'),
+        'fivem_mod_api_key'  => $settings['fivem_mod_api_key'] ?? '',
         'maintenance_mode'   => isset($_POST['maintenance_mode']) ? '1' : '0',
         'registrations_open' => isset($_POST['registrations_open']) ? '1' : '0',
         'welcome_message'    => trim($_POST['welcome_message'] ?? ''),
@@ -161,6 +173,54 @@ include __DIR__ . '/../includes/header.php';
                                     <i class="fas fa-download"></i> Download Resource
                                 </a>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FiveM Moderation API -->
+                <div class="card" style="grid-column:1/-1">
+                    <div class="card-header"><h3><i class="fas fa-key"></i> FiveM Moderation API</h3></div>
+                    <div style="padding:20px">
+                        <div style="display:grid;gap:14px">
+                            <div style="background:var(--bg1);border:1px solid var(--b0);border-radius:var(--r);padding:16px">
+                                <div class="form-label" style="margin-bottom:8px">API Key for FiveM Resource</div>
+                                <div style="font-size:0.82rem;color:var(--t1);margin-bottom:12px">
+                                    This key is used by the <code>lae_moderation</code> FiveM resource to authenticate with the website API.
+                                    Copy this key to your resource's <code>config.lua</code> file.
+                                </div>
+                                <?php if (!empty($settings['fivem_mod_api_key'])): ?>
+                                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                                    <code style="flex:1;background:var(--bg0);padding:10px 14px;border-radius:var(--r);font-size:0.85rem;letter-spacing:0.5px;border:1px solid var(--b1);word-break:break-all"><?= e($settings['fivem_mod_api_key']) ?></code>
+                                    <button type="button" class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('<?= e($settings['fivem_mod_api_key']) ?>');this.innerHTML='<i class=\'fas fa-check\'></i> Copied!';">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <?php else: ?>
+                                <div style="color:var(--t2);font-style:italic;margin-bottom:8px">No API key generated yet.</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+                            <form method="POST" style="display:inline">
+                                <input type="hidden" name="csrf" value="<?= generateCSRF() ?>">
+                                <input type="hidden" name="generate_api_key" value="1">
+                                <button type="submit" class="btn btn-accent btn-sm" data-confirm="<?= empty($settings['fivem_mod_api_key']) ? '' : 'This will invalidate the current API key. Continue?' ?>">
+                                    <i class="fas fa-rotate"></i> <?= empty($settings['fivem_mod_api_key']) ? 'Generate API Key' : 'Regenerate Key' ?>
+                                </button>
+                            </form>
+                            <a href="<?= SITE_URL ?>/api/moderation.php" target="_blank" class="btn btn-ghost btn-sm">
+                                <i class="fas fa-external-link"></i> Test API Endpoint
+                            </a>
+                        </div>
+                        <div style="margin-top:16px;padding:14px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--r)">
+                            <div style="font-weight:700;font-size:0.85rem;color:#3b82f6;margin-bottom:6px"><i class="fas fa-info-circle"></i> Setup Instructions</div>
+                            <ol style="font-size:0.82rem;color:var(--t1);margin:0;padding-left:18px;display:grid;gap:4px">
+                                <li>Download the <code>lae_moderation</code> resource from <code>/fivem-resource/</code></li>
+                                <li>Copy the resource folder to your server's <code>resources/</code> directory</li>
+                                <li>Open <code>config.lua</code> and set <code>Config.ApiKey</code> to the key above</li>
+                                <li>Set <code>Config.ApiUrl</code> to <code><?= SITE_URL ?>/api/moderation.php</code></li>
+                                <li>Add <code>ensure lae_moderation</code> to your <code>server.cfg</code></li>
+                            </ol>
                         </div>
                     </div>
                 </div>

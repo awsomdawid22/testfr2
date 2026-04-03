@@ -33,10 +33,13 @@ function adminLink($href, $icon, $label, $current): string {
     <?= adminLink('threads.php', 'fa-comments', 'Threads & Posts', $adminPage) ?>
     <?= adminLink('categories.php', 'fa-folder', 'Categories', $adminPage) ?>
 
+    <div class="admin-sidebar-title" style="margin-top:10px">Moderation</div>
+    <?= adminLink('moderation.php', 'fa-shield', 'Infractions', $adminPage) ?>
+    <?= adminLink('bans.php', 'fa-ban', 'Ban Management', $adminPage) ?>
+    <?= adminLink('appeals.php', 'fa-gavel', 'Ban Appeals', $adminPage) ?>
+
     <div class="admin-sidebar-title" style="margin-top:10px">Applications</div>
     <?= adminLink('applications.php', 'fa-file-alt', 'Staff Applications', $adminPage) ?>
-    <?= adminLink('appeals.php', 'fa-gavel', 'Ban Appeals', $adminPage) ?>
-    <?= adminLink('bans.php', 'fa-ban', 'Ban Management', $adminPage) ?>
 
     <?php if ($isAdmin): ?>
     <div class="admin-sidebar-title" style="margin-top:10px">Administration</div>

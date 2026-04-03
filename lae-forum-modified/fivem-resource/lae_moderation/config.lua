@@ -11,9 +11,9 @@ Config.API = {
     -- Your forum URL (no trailing slash)
     BaseURL = "https://laexperiencefivem.com",
     
-    -- Your FiveM secret key from Admin > Site Settings
-    -- This MUST match the 'fivem_secret' in your forum settings
-    SecretKey = "YOUR_API_KEY_HERE",
+    -- Your FiveM Moderation API key from Admin > Site Settings > FiveM Moderation API
+    -- Generate this key in the admin panel, then copy it here
+    ApiKey = "YOUR_API_KEY_HERE",
     
     -- API endpoint path
     Endpoint = "/api/moderation.php",

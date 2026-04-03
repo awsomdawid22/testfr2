@@ -26,13 +26,16 @@ require_once __DIR__ . '/../includes/moderation.php';
 
 // Load site settings
 $siteSettings = include __DIR__ . '/../includes/settings.php';
-$API_SECRET = $siteSettings['fivem_secret'] ?? '';
+$API_KEY = $siteSettings['fivem_mod_api_key'] ?? '';
 
 // Validate API key
 $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['key'] ?? '';
-if (empty($API_SECRET) || $apiKey !== $API_SECRET) {
+if (empty($API_KEY) || $apiKey !== $API_KEY) {
     http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Invalid API key']);
+    echo json_encode([
+        'success' => false, 
+        'error' => empty($API_KEY) ? 'API key not configured. Generate one in Admin > Site Settings.' : 'Invalid API key'
+    ]);
     exit;
 }
 

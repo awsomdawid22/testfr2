@@ -25,7 +25,7 @@ local function MakeAPIRequest(action, params, method, body)
     
     local headers = {
         ["Content-Type"] = "application/json",
-        ["X-API-Key"] = Config.API.SecretKey,
+        ["X-API-Key"] = Config.API.ApiKey,
     }
     
     local p = promise.new()

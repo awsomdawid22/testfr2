@@ -23,18 +23,19 @@ This resource integrates your FiveM server with the LAE forum moderation system.
 
 ### Step 2: Configure the API Key
 
-1. Open `lae_moderation/config.lua`
-2. Set your forum URL and API secret key:
+1. Go to your forum's **Admin > Site Settings**
+2. Scroll down to the **FiveM Moderation API** section
+3. Click **Generate API Key** to create a new key
+4. Copy the generated key (starts with `lae_`)
+5. Open `lae_moderation/config.lua` and paste it:
 
 ```lua
 Config.API = {
     BaseURL = "https://laexperiencefivem.com",
-    SecretKey = "YOUR_API_KEY_HERE",  -- From Admin > Site Settings > fivem_secret
+    ApiKey = "lae_your_generated_key_here",  -- Paste your key here
     Endpoint = "/api/moderation.php",
 }
 ```
-
-Your API secret key is the `fivem_secret` value in your forum's Admin > Site Settings.
 
 ### Step 3: Set Up Permissions
 
@@ -126,14 +127,15 @@ The resource communicates with these API endpoints:
 | `?action=create_infraction` | POST | Create a new infraction |
 | `?action=remove_ban` | POST | Remove/revoke a ban |
 
-All requests require the `X-API-Key` header with your fivem_secret.
+All requests require the `X-API-Key` header with your API key (generated in Admin > Site Settings).
 
 ---
 
 ## Troubleshooting
 
 ### "Invalid API key" error
-- Make sure the `SecretKey` in config.lua matches the `fivem_secret` in your forum admin settings
+- Go to Admin > Site Settings > FiveM Moderation API and generate a key if you haven't
+- Make sure the `ApiKey` in config.lua matches the generated key exactly
 - Check that your forum URL is correct (no trailing slash)
 
 ### Bans not syncing
