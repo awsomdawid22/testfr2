@@ -499,3 +499,136 @@ function sendThreadReplyEmail(
         $text
     );
 }
+
+
+// ── Login notification email with location ───────────────────────────────────
+/**
+ * Get location information from IP address using ip-api.com (free, no API key required)
+ */
+function getLocationFromIP(string $ip): array {
+    $defaultLocation = [
+        'city' => 'Unknown',
+        'region' => 'Unknown',
+        'country' => 'Unknown',
+        'full' => 'Unknown location'
+    ];
+
+    // Skip for localhost/private IPs
+    if (in_array($ip, ['127.0.0.1', '::1', 'localhost']) || 
+        preg_match('/^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/', $ip)) {
+        $defaultLocation['full'] = 'Local network';
+        return $defaultLocation;
+    }
+
+    try {
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => 5,
+                'ignore_errors' => true
+            ]
+        ]);
+        
+        $response = @file_get_contents("http://ip-api.com/json/{$ip}?fields=status,message,country,regionName,city", false, $context);
+        
+        if ($response === false) {
+            return $defaultLocation;
+        }
+        
+        $data = json_decode($response, true);
+        
+        if ($data && isset($data['status']) && $data['status'] === 'success') {
+            $city = $data['city'] ?? 'Unknown';
+            $region = $data['regionName'] ?? 'Unknown';
+            $country = $data['country'] ?? 'Unknown';
+            
+            // Build full location string
+            $parts = array_filter([$city, $region, $country], fn($p) => $p !== 'Unknown' && !empty($p));
+            $full = !empty($parts) ? implode(', ', $parts) : 'Unknown location';
+            
+            return [
+                'city' => $city,
+                'region' => $region,
+                'country' => $country,
+                'full' => $full
+            ];
+        }
+    } catch (Exception $e) {
+        error_log('[LAE Mailer] IP geolocation error: ' . $e->getMessage());
+    }
+    
+    return $defaultLocation;
+}
+
+/**
+ * Send login notification email with location information
+ */
+function sendLoginNotificationEmail(string $toEmail, string $username, string $ipAddress): bool {
+    $siteUrl = defined('SITE_URL') ? SITE_URL : 'https://laexperiencefivem.com';
+    
+    // Get location from IP
+    $location = getLocationFromIP($ipAddress);
+    $locationDisplay = htmlspecialchars($location['full'], ENT_QUOTES, 'UTF-8');
+    $ipDisplay = htmlspecialchars($ipAddress, ENT_QUOTES, 'UTF-8');
+    
+    // Get timestamp
+    $loginTime = date('F j, Y \a\t g:i A T');
+    
+    $body = <<<HTML
+<h2 style="color:#f0f0f8;font-size:22px;font-weight:700;letter-spacing:0.5px;margin:0 0 8px">New Login Detected</h2>
+<p style="color:#55556a;font-size:12px;text-transform:uppercase;letter-spacing:2px;margin:0 0 28px">Security notification for your account</p>
+
+<p style="color:#b8b8cc;font-size:15px;line-height:1.8">
+  Hi <strong style="color:#f0f0f8">{$username}</strong>,<br><br>
+  We detected a new sign-in to your LAE Forums account. If this was you, no action is needed.
+</p>
+
+<div style="background:#0a0a0e;border:1px solid #222230;border-radius:8px;padding:18px 22px;margin:24px 0">
+  <table cellpadding="0" cellspacing="0" style="width:100%">
+    <tr>
+      <td style="padding:8px 0">
+        <div style="font-size:11px;color:#55556a;text-transform:uppercase;letter-spacing:2px">When</div>
+        <div style="font-size:14px;font-weight:600;color:#f0f0f8;margin-top:4px">{$loginTime}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;border-top:1px solid #1a1a26">
+        <div style="font-size:11px;color:#55556a;text-transform:uppercase;letter-spacing:2px">Location</div>
+        <div style="font-size:14px;font-weight:600;color:#f0f0f8;margin-top:4px">{$locationDisplay}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;border-top:1px solid #1a1a26">
+        <div style="font-size:11px;color:#55556a;text-transform:uppercase;letter-spacing:2px">IP Address</div>
+        <div style="font-size:14px;font-weight:600;color:#f0f0f8;margin-top:4px">{$ipDisplay}</div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div style="background:#1a1510;border:1px solid #3d2a1a;border-radius:6px;padding:16px;margin:20px 0">
+  <p style="color:#e6a64a;font-size:14px;margin:0;line-height:1.6">
+    <strong style="color:#f5c970">⚠️ Wasn't you?</strong><br>
+    If you don't recognize this login, someone else may have access to your account. 
+    Please <a href="{$siteUrl}/settings.php" style="color:#f5c970;text-decoration:underline">change your password immediately</a>.
+  </p>
+</div>
+
+<p style="color:#444450;font-size:12px;margin-top:24px;line-height:1.6">
+  This is an automated security notification. You're receiving this because you have a LAE Forums account.<br>
+  Location is approximate and based on your IP address.
+</p>
+HTML;
+
+    $text = "Hi {$username},\n\n"
+          . "We detected a new sign-in to your LAE Forums account.\n\n"
+          . "When: {$loginTime}\n"
+          . "Location: {$location['full']}\n"
+          . "IP Address: {$ipAddress}\n\n"
+          . "If this was you, no action is needed.\n\n"
+          . "If this wasn't you, please change your password immediately at: {$siteUrl}/settings.php\n\n"
+          . "— Los Angeles Experience Forums";
+
+    $html = getEmailWrapper('New Login Detected · LAE Forums', $body);
+    $mailer = new LAEMailer();
+    return $mailer->send($toEmail, $username, 'New login to your LAE Forums account', $html, $text);
+}

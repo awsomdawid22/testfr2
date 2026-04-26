@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/mailer.php';
 
 // ============================================
 // Authentication & Session Functions
@@ -111,6 +112,14 @@ function login(string $username, string $password, array $args = []): array {
 
     // Log login
     logAudit($user['id'], 'login', 'user', $user['id'], 'User logged in');
+
+    // Send login notification email with location
+    $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    // If there are multiple IPs (from proxies), take the first one (original client)
+    if (strpos($ip, ',') !== false) {
+        $ip = trim(explode(',', $ip)[0]);
+    }
+    sendLoginNotificationEmail($user['email'], $user['username'], $ip);
 
     return ['success' => true];
 }
