@@ -149,6 +149,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const SITE_URL = document.querySelector('meta[name="site-url"]')?.content || '';
     const API_URL  = SITE_URL + '/api.php';
 
+    // Copy post link buttons
+    document.querySelectorAll('.copy-link-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const url = btn.dataset.postUrl;
+            if (!url) return;
+            
+            try {
+                await navigator.clipboard.writeText(url);
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                btn.style.color = 'var(--green)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.color = '';
+                }, 2000);
+            } catch (e) {
+                // Fallback for older browsers
+                const input = document.createElement('input');
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                btn.style.color = 'var(--green)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.style.color = '';
+                }, 2000);
+            }
+        });
+    });
+
     // Like buttons
     document.querySelectorAll('.like-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -360,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ================================================================
-// LIVE NOTIFICATION + UNREAD COUNT POLLING
+// LIVE UPDATES SYSTEM
 // ================================================================
 (function() {
     const SITE_URL    = document.querySelector('meta[name="site-url"]')?.content || '';
@@ -369,11 +404,138 @@ document.addEventListener('DOMContentLoaded', () => {
     const notifBadge  = document.querySelector('.notif-badge:not(.msg-badge)');
     const msgBadge    = document.querySelector('.msg-badge');
 
-    if (!notifBadge && !msgBadge) return; // not logged in
-
+    // Track shown notifications to avoid duplicates
+    let shownNotificationIds = new Set();
     let lastNotifCount = parseInt(notifBadge?.textContent) || 0;
     let lastMsgCount   = parseInt(msgBadge?.textContent)   || 0;
 
+    // ════════════════════════════════════════════════════════════════
+    // TOAST NOTIFICATION SYSTEM
+    // ════════════════════════════════════════════════════════════════
+    function createToastContainer() {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    function showToast(title, content, type = 'info', link = null, notifId = null) {
+        const container = createToastContainer();
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        const icons = {
+            'thread_reply': 'fa-reply',
+            'like': 'fa-heart',
+            'mention': 'fa-at',
+            'message': 'fa-envelope',
+            'info': 'fa-info-circle',
+            'warning': 'fa-exclamation-triangle',
+            'error': 'fa-times-circle',
+            'success': 'fa-check-circle'
+        };
+        const icon = icons[type] || icons['info'];
+        
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="fas ${icon}"></i></div>
+            <div class="toast-content">
+                <div class="toast-title">${escapeHtml(title)}</div>
+                ${content ? `<div class="toast-body">${escapeHtml(content).substring(0, 100)}${content.length > 100 ? '...' : ''}</div>` : ''}
+            </div>
+            <button class="toast-close"><i class="fas fa-times"></i></button>
+        `;
+        
+        // Click to go to link
+        if (link) {
+            toast.style.cursor = 'pointer';
+            toast.addEventListener('click', (e) => {
+                if (!e.target.closest('.toast-close')) {
+                    // Mark as read if we have notifId
+                    if (notifId) {
+                        fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'mark_notification_read', notification_id: notifId, csrf: csrfToken() })
+                        });
+                    }
+                    window.location.href = link;
+                }
+            });
+        }
+        
+        // Close button
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            toast.classList.add('toast-hiding');
+            setTimeout(() => toast.remove(), 300);
+        });
+        
+        container.appendChild(toast);
+        
+        // Animate in
+        requestAnimationFrame(() => toast.classList.add('toast-visible'));
+        
+        // Auto dismiss after 6 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.classList.add('toast-hiding');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 6000);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // BAN/DELETION DETECTION MODAL
+    // ════════════════════════════════════════════════════════════════
+    function showBanModal(data) {
+        // Remove any existing modal
+        const existing = document.getElementById('ban-modal');
+        if (existing) existing.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'ban-modal';
+        modal.className = 'ban-modal-overlay';
+        
+        let content = '';
+        if (data.status === 'deleted') {
+            content = `
+                <div class="ban-modal-icon deleted"><i class="fas fa-user-slash"></i></div>
+                <h2>Account Deleted</h2>
+                <p>Your account has been deleted from LAE Forums.</p>
+                <p class="ban-modal-sub">If you believe this was a mistake, please contact the administration.</p>
+            `;
+        } else if (data.status === 'banned') {
+            content = `
+                <div class="ban-modal-icon banned"><i class="fas fa-ban"></i></div>
+                <h2>Account Banned</h2>
+                <p>Your account has been banned from LAE Forums.</p>
+                ${data.reason ? `<div class="ban-modal-reason"><strong>Reason:</strong> ${escapeHtml(data.reason)}</div>` : ''}
+                ${data.is_permanent 
+                    ? '<div class="ban-modal-expiry permanent"><i class="fas fa-infinity"></i> Permanent Ban</div>'
+                    : `<div class="ban-modal-expiry"><i class="fas fa-clock"></i> Expires: ${escapeHtml(data.expires_formatted)}</div>`
+                }
+                <p class="ban-modal-sub">You may submit a ban appeal after logging out.</p>
+            `;
+        }
+        
+        modal.innerHTML = `
+            <div class="ban-modal-box">
+                ${content}
+                <button class="btn btn-accent ban-modal-btn" onclick="window.location.href='${SITE_URL}/logout.php'">
+                    <i class="fas fa-sign-out-alt"></i> Log Out
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        requestAnimationFrame(() => modal.classList.add('visible'));
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // POLL COUNTS + SESSION CHECK
+    // ════════════════════════════════════════════════════════════════
     async function pollCounts() {
         try {
             const r = await fetch(API_URL, {
@@ -407,9 +569,158 @@ document.addEventListener('DOMContentLoaded', () => {
                 msgBadge.textContent = m > 99 ? '99+' : m;
                 msgBadge.style.display = m > 0 ? '' : 'none';
             }
+            
+            // Show toast for new notifications
+            if (d.latest_notifications && d.latest_notifications.length > 0) {
+                d.latest_notifications.forEach(notif => {
+                    if (!shownNotificationIds.has(notif.id)) {
+                        shownNotificationIds.add(notif.id);
+                        showToast(notif.title, notif.content, notif.type, notif.link, notif.id);
+                    }
+                });
+            }
         } catch(e) { /* ignore */ }
     }
 
-    // Poll every 30 seconds
-    setInterval(pollCounts, 30000);
+    async function checkSession() {
+        try {
+            const r = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'check_session' })
+            });
+            const d = await r.json();
+            
+            if (d.success) {
+                if (d.status === 'banned' || d.status === 'deleted') {
+                    showBanModal(d);
+                } else if (d.status === 'logged_out' && (notifBadge || msgBadge)) {
+                    // Was logged in but session expired
+                    window.location.href = SITE_URL + '/login.php?expired=1';
+                }
+            }
+        } catch(e) { /* ignore */ }
+    }
+
+    // Only run if user appears to be logged in
+    if (notifBadge || msgBadge) {
+        // Poll counts every 30 seconds
+        setInterval(pollCounts, 30000);
+        
+        // Check session every 30 seconds
+        setInterval(checkSession, 30000);
+        
+        // Initial session check after 5 seconds (give page time to load)
+        setTimeout(checkSession, 5000);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // LIVE THREAD UPDATES (for thread.php pages)
+    // ════════════════════════════════════════════════════════════════
+    const threadMeta = document.querySelector('meta[name="thread-id"]');
+    if (threadMeta) {
+        const threadId = parseInt(threadMeta.content);
+        let lastPostId = 0;
+        let newPostCount = 0;
+        
+        // Find the last post ID on the page
+        const postElements = document.querySelectorAll('.post-wrapper[id^="post-"]');
+        if (postElements.length > 0) {
+            const lastPost = postElements[postElements.length - 1];
+            lastPostId = parseInt(lastPost.id.replace('post-', ''));
+        }
+        
+        // Create the "new replies" banner
+        const newRepliesBanner = document.createElement('div');
+        newRepliesBanner.id = 'new-replies-banner';
+        newRepliesBanner.className = 'new-replies-banner';
+        newRepliesBanner.innerHTML = `
+            <span class="nrb-text"><i class="fas fa-arrow-down"></i> <span class="nrb-count">0</span> new replies</span>
+            <button class="nrb-btn">Load New Replies</button>
+        `;
+        newRepliesBanner.style.display = 'none';
+        
+        // Insert banner after thread header
+        const threadHeader = document.querySelector('.thread-header-bar');
+        if (threadHeader) {
+            threadHeader.parentNode.insertBefore(newRepliesBanner, threadHeader.nextSibling);
+        }
+        
+        // Load new replies button handler
+        newRepliesBanner.querySelector('.nrb-btn').addEventListener('click', async () => {
+            try {
+                const r = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_new_posts', thread_id: threadId, last_post_id: lastPostId, csrf: csrfToken() })
+                });
+                const d = await r.json();
+                
+                if (d.success && d.posts && d.posts.length > 0) {
+                    // For simplicity, reload the page to show new posts
+                    // In a more sophisticated implementation, we could inject posts dynamically
+                    window.location.reload();
+                }
+            } catch(e) {
+                showFlash('Failed to load new replies', 'error');
+            }
+        });
+        
+        async function pollThread() {
+            try {
+                const r = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'poll_thread', thread_id: threadId, last_post_id: lastPostId, csrf: csrfToken() })
+                });
+                const d = await r.json();
+                
+                if (d.success) {
+                    // Update reply count display
+                    const replyCountEl = document.getElementById('live-reply-count');
+                    if (replyCountEl) {
+                        replyCountEl.textContent = d.reply_count.toLocaleString();
+                    }
+                    
+                    // Show new replies banner if there are new posts
+                    if (d.new_post_count > 0) {
+                        newPostCount = d.new_post_count;
+                        newRepliesBanner.querySelector('.nrb-count').textContent = newPostCount;
+                        newRepliesBanner.querySelector('.nrb-text').innerHTML = 
+                            `<i class="fas fa-arrow-down"></i> ${newPostCount} new ${newPostCount === 1 ? 'reply' : 'replies'}`;
+                        newRepliesBanner.style.display = 'flex';
+                        newRepliesBanner.classList.add('nrb-pulse');
+                        setTimeout(() => newRepliesBanner.classList.remove('nrb-pulse'), 500);
+                    }
+                    
+                    // Show lock status change
+                    const lockTag = document.querySelector('.thread-tag.tag-locked');
+                    if (d.is_locked && !lockTag) {
+                        showToast('Thread Locked', 'This thread has been locked by a moderator.', 'warning');
+                    }
+                }
+            } catch(e) { /* ignore */ }
+        }
+        
+        // Poll thread every 15 seconds
+        setInterval(pollThread, 15000);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // KEYBOARD SHORTCUTS
+    // ════════════════════════════════════════════════════════════════
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+Enter to submit forms
+        if (e.ctrlKey && e.key === 'Enter') {
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.tagName === 'TEXTAREA') {
+                const form = activeEl.closest('form');
+                if (form) {
+                    e.preventDefault();
+                    form.submit();
+                }
+            }
+        }
+    });
+
 })();

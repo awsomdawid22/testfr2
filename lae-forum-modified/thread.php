@@ -4,6 +4,13 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 
 $currentUser = getCurrentUser();
+
+// Require login to view threads
+if (!$currentUser) {
+    header('Location: ' . SITE_URL . '/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
+
 $db = getDB();
 
 $threadId = (int)($_GET['id'] ?? 0);
@@ -147,6 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['post_content'])) {
 include __DIR__ . '/includes/header.php';
 ?>
 <meta name="csrf-token" content="<?= generateCSRF() ?>">
+<meta name="thread-id" content="<?= $threadId ?>">
 
 <div class="container">
     <!-- Breadcrumb -->
@@ -273,6 +281,7 @@ include __DIR__ . '/includes/header.php';
                         <span class="like-count"><?= $post['like_count'] ?></span>
                     </button>
                     <div class="post-actions">
+                        <button class="post-action-btn copy-link-btn" data-post-url="<?= SITE_URL ?>/thread.php?id=<?= $threadId ?>#post-<?= $post['id'] ?>" title="Copy link to post"><i class="fas fa-link"></i> Link</button>
                         <?php if ($currentUser && ($currentUser['id'] == $post['user_id'] || $currentUser['can_moderate'])): ?>
                             <button class="post-action-btn edit-post-btn" data-post-id="<?= $post['id'] ?>"><i class="fas fa-pen"></i> Edit</button>
                         <?php endif; ?>

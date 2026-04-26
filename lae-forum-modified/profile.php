@@ -4,6 +4,13 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 
 $currentUser = getCurrentUser();
+
+// Require login to view profiles
+if (!$currentUser) {
+    header('Location: ' . SITE_URL . '/login.php?redirect=' . urlencode($_SERVER['REQUEST_URI']));
+    exit;
+}
+
 $db = getDB();
 
 // Load profile
