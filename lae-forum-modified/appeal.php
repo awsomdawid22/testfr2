@@ -94,15 +94,15 @@ include __DIR__ . '/includes/header.php';
         <?php include __DIR__ . '/includes/auth-logo.php'; ?>
     </div>
 
-    <?php if ($currentUser['is_banned']): ?>
+    <?php if (!empty($currentUser['is_banned'])): ?>
     <div class="alert alert-error" style="margin-bottom:20px">
         <i class="fas fa-ban"></i>
         <div>
             <strong>You are currently banned.</strong>
-            <?php if ($currentUser['ban_reason']): ?>
+            <?php if (!empty($currentUser['ban_reason'])): ?>
             <div style="margin-top:4px;font-size:0.9rem">Reason: <?= e($currentUser['ban_reason']) ?></div>
             <?php endif; ?>
-            <?php if ($currentUser['ban_expires']): ?>
+            <?php if (!empty($currentUser['ban_expires'])): ?>
             <div style="font-size:0.85rem;margin-top:4px;color:var(--t2)">Expires: <?= date('F j, Y \a\t g:i A', strtotime($currentUser['ban_expires'])) ?></div>
             <?php endif; ?>
         </div>
