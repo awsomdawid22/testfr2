@@ -131,6 +131,22 @@ include __DIR__ . '/../includes/header.php';
                                 <span>Maintenance Mode <span style="color:var(--red)">(locks out non-admins)</span></span>
                             </label>
                         </div>
+                        
+                        <!-- Quick Moderation Links -->
+                        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b0)">
+                            <div class="form-label" style="margin-bottom:8px">Moderation Tools</div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                <a href="<?= SITE_URL ?>/admin/automod.php" class="btn btn-ghost btn-sm">
+                                    <i class="fas fa-robot"></i> AutoMod Settings
+                                </a>
+                                <a href="<?= SITE_URL ?>/admin/flagged.php" class="btn btn-ghost btn-sm">
+                                    <i class="fas fa-flag"></i> Flagged Accounts
+                                </a>
+                                <a href="<?= SITE_URL ?>/admin/content-filters.php" class="btn btn-ghost btn-sm">
+                                    <i class="fas fa-filter"></i> Content Filters
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -38,8 +38,8 @@ $discordUrl = $siteSettings['discord_url'] ?? '#';
         
         body {
             font-family: 'Rajdhani', sans-serif;
-            background: var(--bg0);
-            color: var(--t0);
+            background: #0a0a0f;
+            color: #ffffff;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -111,14 +111,14 @@ $discordUrl = $siteSettings['discord_url'] ?? '#';
         
         .subtitle {
             font-size: 1.2rem;
-            color: var(--t0);
+            color: var(--text-secondary);
             margin-bottom: 30px;
             line-height: 1.6;
         }
         
         .status-box {
-            background: var(--bg1);
-            border: 1px solid var(--b0);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 30px;
@@ -147,7 +147,7 @@ $discordUrl = $siteSettings['discord_url'] ?? '#';
         }
         
         .info-text {
-            color: var(--t0);
+            color: var(--text-secondary);
             font-size: 0.95rem;
             margin-top: 15px;
         }
@@ -187,8 +187,8 @@ $discordUrl = $siteSettings['discord_url'] ?? '#';
         
         .btn-ghost {
             background: transparent;
-            color: var(--t0);
-            border: 1px solid var(--b0);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
         }
         
         .btn-ghost:hover {
@@ -199,11 +199,11 @@ $discordUrl = $siteSettings['discord_url'] ?? '#';
         .admin-notice {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid var(--b0);
+            border-top: 1px solid var(--border);
         }
         
         .admin-notice p {
-            color: var(--t0);
+            color: var(--text-secondary);
             font-size: 0.85rem;
             margin-bottom: 10px;
         }

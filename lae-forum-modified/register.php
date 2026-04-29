@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/mailer.php';
+require_once __DIR__ . '/includes/email-validator.php';
 
 // Load settings to check if registrations are open
 $settingsFile = __DIR__ . '/includes/settings.php';
@@ -31,7 +32,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $registrationsOpen) {
     } else {
         $username = trim($_POST['username'] ?? '');
         $email    = trim($_POST['email'] ?? '');
-        $result   = register($username, $email, $_POST['password'] ?? '');
+        
+        // Advanced email validation
+        try {
+            $db = getDB();
+            EmailValidator::loadCustomFilters($db);
+        } catch (Exception $e) {
+            // DB filters not available yet, continue with defaults
+        }
+        $emailValidation = EmailValidator::validate($email);
+        if (!$emailValidation['valid']) {
+            $error = $emailValidation['error'];
+        }
+        
+        if (!$error) {
+            $result = register($username, $email, $_POST['password'] ?? '');
         if ($result['success']) {
             // Generate email verification token
             $db = getDB();
@@ -47,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $registrationsOpen) {
         } else {
             $error = $result['error'];
         }
+        } // Close the !$error check
     }
 }
 

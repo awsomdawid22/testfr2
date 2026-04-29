@@ -37,6 +37,10 @@ function adminLink($href, $icon, $label, $current): string {
     <?= adminLink('moderation.php', 'fa-shield', 'Infractions', $adminPage) ?>
     <?= adminLink('bans.php', 'fa-ban', 'Ban Management', $adminPage) ?>
     <?= adminLink('appeals.php', 'fa-gavel', 'Ban Appeals', $adminPage) ?>
+    <?= adminLink('automod.php', 'fa-robot', 'AutoMod', $adminPage) ?>
+    <?= adminLink('content-filters.php', 'fa-filter', 'Content Filters', $adminPage) ?>
+    <?= adminLink('flagged.php', 'fa-flag', 'Flagged Accounts', $adminPage) ?>
+    <?= adminLink('ip-lookup.php', 'fa-search-location', 'IP Lookup', $adminPage) ?>
 
     <div class="admin-sidebar-title" style="margin-top:10px">Applications</div>
     <?= adminLink('applications.php', 'fa-file-alt', 'Staff Applications', $adminPage) ?>

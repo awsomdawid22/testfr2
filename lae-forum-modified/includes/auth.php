@@ -80,8 +80,27 @@ function login(string $username, string $password, array $args = []): array {
     $user = $stmt->fetch();
 
     if (!$user || !password_verify($password, $user['password_hash'])) {
+        // Track failed login attempt
+        if ($user) {
+            try {
+                $db->prepare("UPDATE users SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1, last_failed_login = NOW() WHERE id = ?")
+                   ->execute([$user['id']]);
+            } catch (\Exception $e) {}
+        }
         return ['success' => false, 'error' => 'Invalid username or password.'];
     }
+    
+    // Check if account is locked
+    if (!empty($user['account_locked'])) {
+        $reason = $user['lock_reason'] ?? 'Your account has been locked.';
+        return ['success' => false, 'error' => "Account locked: $reason Please contact staff."];
+    }
+    
+    // Reset failed login attempts on successful login
+    try {
+        $db->prepare("UPDATE users SET failed_login_attempts = 0 WHERE id = ?")->execute([$user['id']]);
+    } catch (\Exception $e) {}
+    
     if ($user['is_banned']) {
         // Allow banned users to log in so they can submit a ban appeal
         startSecureSession();
@@ -119,6 +138,12 @@ function login(string $username, string $password, array $args = []): array {
     if (strpos($ip, ',') !== false) {
         $ip = trim(explode(',', $ip)[0]);
     }
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+    
+    // Track IP and session for security
+    logIPHistory($user['id'], $ip, 'login', $userAgent);
+    trackUserSession($user['id'], $ip, $userAgent);
+    
     sendLoginNotificationEmail($user['email'], $user['username'], $ip);
 
     return ['success' => true];
@@ -168,11 +193,84 @@ function register(string $username, string $email, string $password): array {
 
     $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
     $newMemberRole = $db->query("SELECT id FROM roles WHERE name = 'new_member'")->fetchColumn();
+    
+    // Get registration IP
+    $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (strpos($ip, ',') !== false) {
+        $ip = trim(explode(',', $ip)[0]);
+    }
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-    $stmt = $db->prepare("INSERT INTO users (username, email, password_hash, role_id, email_verified) VALUES (?,?,?,?,1)");
-    $stmt->execute([$username, $email, $hash, $newMemberRole]);
+    // Check if registration_ip column exists, insert accordingly
+    try {
+        $stmt = $db->prepare("INSERT INTO users (username, email, password_hash, role_id, email_verified, registration_ip, last_ip, last_user_agent) VALUES (?,?,?,?,1,?,?,?)");
+        $stmt->execute([$username, $email, $hash, $newMemberRole, $ip, $ip, $userAgent]);
+    } catch (\PDOException $e) {
+        // Fallback if new columns don't exist yet
+        $stmt = $db->prepare("INSERT INTO users (username, email, password_hash, role_id, email_verified) VALUES (?,?,?,?,1)");
+        $stmt->execute([$username, $email, $hash, $newMemberRole]);
+    }
+    
+    $userId = $db->lastInsertId();
+    
+    // Log IP history for registration
+    logIPHistory($userId, $ip, 'register', $userAgent);
+    
+    // Create initial session record
+    trackUserSession($userId, $ip, $userAgent);
 
-    return ['success' => true, 'user_id' => $db->lastInsertId()];
+    return ['success' => true, 'user_id' => $userId];
+}
+
+/**
+ * Log IP history for a user action
+ */
+function logIPHistory(int $userId, string $ip, string $action, ?string $userAgent = null): void {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("INSERT INTO ip_history (user_id, ip_address, action, user_agent) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$userId, $ip, $action, $userAgent]);
+    } catch (\Exception $e) {
+        // Table may not exist yet, ignore
+    }
+}
+
+/**
+ * Track user session
+ */
+function trackUserSession(int $userId, string $ip, ?string $userAgent = null): void {
+    try {
+        $db = getDB();
+        $sessionId = session_id();
+        
+        // Deactivate other sessions for this user if force_logout is set
+        $user = $db->prepare("SELECT force_logout FROM users WHERE id = ?");
+        $user->execute([$userId]);
+        $userData = $user->fetch();
+        if ($userData && $userData['force_logout']) {
+            $db->prepare("UPDATE user_sessions SET is_active = 0 WHERE user_id = ?")->execute([$userId]);
+            $db->prepare("UPDATE users SET force_logout = 0 WHERE id = ?")->execute([$userId]);
+        }
+        
+        // Check if session already exists
+        $existing = $db->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
+        $existing->execute([$sessionId, $userId]);
+        
+        if ($existing->fetch()) {
+            // Update existing session
+            $db->prepare("UPDATE user_sessions SET ip_address = ?, user_agent = ?, last_activity = NOW(), is_active = 1 WHERE session_id = ? AND user_id = ?")
+               ->execute([$ip, $userAgent, $sessionId, $userId]);
+        } else {
+            // Create new session record
+            $stmt = $db->prepare("INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$userId, $sessionId, $ip, $userAgent]);
+        }
+        
+        // Update user's last IP
+        $db->prepare("UPDATE users SET last_ip = ?, last_user_agent = ? WHERE id = ?")->execute([$ip, $userAgent, $userId]);
+    } catch (\Exception $e) {
+        // Table may not exist yet, ignore
+    }
 }
 
 function isAdmin(?array $user = null): bool {

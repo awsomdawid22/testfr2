@@ -56,6 +56,12 @@ if ($search) { $where .= " AND (u.username LIKE ? OR u.email LIKE ?)"; $params[]
 if ($filter === 'banned') { $where .= " AND u.is_banned = 1"; }
 if ($filter === 'admins') { $where .= " AND r.can_admin = 1"; }
 if ($filter === 'mods') { $where .= " AND r.can_moderate = 1"; }
+if ($filter === 'muted') { $where .= " AND u.is_muted = 1"; }
+if ($filter === 'flagged') { $where .= " AND u.is_flagged = 1"; }
+if ($filter === 'trusted') { $where .= " AND u.is_trusted = 1"; }
+if ($filter === 'locked') { $where .= " AND u.account_locked = 1"; }
+if ($filter === 'high_risk') { $where .= " AND u.risk_score >= 50"; }
+if ($filter === 'new') { $where .= " AND u.created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)"; }
 
 $countStmt = $db->prepare("SELECT COUNT(*) FROM users u JOIN roles r ON u.role_id = r.id WHERE $where");
 $countStmt->execute($params);
@@ -149,9 +155,19 @@ include __DIR__ . '/../includes/header.php';
             <input type="text" name="search" class="form-input" placeholder="Search by username or email..." value="<?= e($search) ?>" style="flex:1;min-width:200px">
             <select name="filter" class="form-select" style="width:auto">
                 <option value="all" <?= $filter === 'all' ? 'selected' : '' ?>>All Users</option>
-                <option value="banned" <?= $filter === 'banned' ? 'selected' : '' ?>>Banned</option>
-                <option value="admins" <?= $filter === 'admins' ? 'selected' : '' ?>>Admins</option>
-                <option value="mods" <?= $filter === 'mods' ? 'selected' : '' ?>>Moderators</option>
+                <option value="new" <?= $filter === 'new' ? 'selected' : '' ?>>New (7 days)</option>
+                <optgroup label="Roles">
+                    <option value="admins" <?= $filter === 'admins' ? 'selected' : '' ?>>Admins</option>
+                    <option value="mods" <?= $filter === 'mods' ? 'selected' : '' ?>>Moderators</option>
+                </optgroup>
+                <optgroup label="Status">
+                    <option value="banned" <?= $filter === 'banned' ? 'selected' : '' ?>>Banned</option>
+                    <option value="muted" <?= $filter === 'muted' ? 'selected' : '' ?>>Muted</option>
+                    <option value="flagged" <?= $filter === 'flagged' ? 'selected' : '' ?>>Flagged</option>
+                    <option value="locked" <?= $filter === 'locked' ? 'selected' : '' ?>>Locked</option>
+                    <option value="trusted" <?= $filter === 'trusted' ? 'selected' : '' ?>>Trusted</option>
+                    <option value="high_risk" <?= $filter === 'high_risk' ? 'selected' : '' ?>>High Risk</option>
+                </optgroup>
             </select>
             <button type="submit" class="btn btn-ghost"><i class="fas fa-search"></i> Search</button>
         </form>
@@ -176,15 +192,32 @@ include __DIR__ . '/../includes/header.php';
                     <td><?= getRoleBadge($u) ?></td>
                     <td><?= number_format($u['post_count']) ?></td>
                     <td>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px">
                         <?php if ($u['is_banned']): ?>
-                            <span style="color:var(--red);font-size:0.8rem;font-weight:700"><i class="fas fa-ban"></i> Banned</span>
+                            <span style="color:var(--red);font-size:0.75rem;font-weight:700"><i class="fas fa-ban"></i> Banned</span>
+                        <?php elseif ($u['account_locked'] ?? false): ?>
+                            <span style="color:var(--red);font-size:0.75rem;font-weight:700"><i class="fas fa-lock"></i> Locked</span>
                         <?php else: ?>
-                            <span style="color:var(--green);font-size:0.8rem;font-weight:700"><i class="fas fa-check"></i> Active</span>
+                            <span style="color:var(--green);font-size:0.75rem;font-weight:700"><i class="fas fa-check"></i> Active</span>
                         <?php endif; ?>
+                        <?php if ($u['is_muted'] ?? false): ?>
+                            <span style="color:#f39c12;font-size:0.7rem" title="Muted"><i class="fas fa-volume-mute"></i></span>
+                        <?php endif; ?>
+                        <?php if ($u['is_flagged'] ?? false): ?>
+                            <span style="color:#9b59b6;font-size:0.7rem" title="Flagged"><i class="fas fa-flag"></i></span>
+                        <?php endif; ?>
+                        <?php if ($u['is_trusted'] ?? false): ?>
+                            <span style="color:var(--green);font-size:0.7rem" title="Trusted"><i class="fas fa-shield-check"></i></span>
+                        <?php endif; ?>
+                        <?php if (($u['risk_score'] ?? 0) >= 50): ?>
+                            <span style="color:var(--red);font-size:0.7rem" title="High Risk: <?= $u['risk_score'] ?>"><i class="fas fa-exclamation-triangle"></i></span>
+                        <?php endif; ?>
+                        </div>
                     </td>
                     <td style="color:var(--t2);font-size:0.8rem"><?= timeAgo($u['created_at']) ?></td>
                     <td>
                         <div style="display:flex;gap:4px;flex-wrap:wrap">
+                            <a href="<?= SITE_URL ?>/admin/user-detail.php?id=<?= $u['id'] ?>" class="btn btn-ghost btn-sm" title="User Intelligence"><i class="fas fa-user-secret"></i></a>
                             <?php if (isAdmin()): ?>
                                 <a href="?edit=<?= $u['id'] ?>" class="btn btn-ghost btn-sm"><i class="fas fa-pen"></i></a>
                             <?php endif; ?>
