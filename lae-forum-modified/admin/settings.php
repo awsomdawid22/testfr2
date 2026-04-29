@@ -201,13 +201,9 @@ include __DIR__ . '/../includes/header.php';
                             </div>
                         </div>
                         <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-                            <form method="POST" style="display:inline">
-                                <input type="hidden" name="csrf" value="<?= generateCSRF() ?>">
-                                <input type="hidden" name="generate_api_key" value="1">
-                                <button type="submit" class="btn btn-accent btn-sm" data-confirm="<?= empty($settings['fivem_mod_api_key']) ? '' : 'This will invalidate the current API key. Continue?' ?>">
-                                    <i class="fas fa-rotate"></i> <?= empty($settings['fivem_mod_api_key']) ? 'Generate API Key' : 'Regenerate Key' ?>
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-accent btn-sm" id="generateApiKeyBtn" data-confirm="<?= empty($settings['fivem_mod_api_key']) ? '' : 'This will invalidate the current API key. Continue?' ?>">
+                                <i class="fas fa-rotate"></i> <?= empty($settings['fivem_mod_api_key']) ? 'Generate API Key' : 'Regenerate Key' ?>
+                            </button>
                             <a href="<?= SITE_URL ?>/api/moderation.php" target="_blank" class="btn btn-ghost btn-sm">
                                 <i class="fas fa-external-link"></i> Test API Endpoint
                             </a>
@@ -324,5 +320,26 @@ if (isset($_GET['action']) && verifyCSRF($_GET['csrf'] ?? '')) {
     }
 }
 ?>
+
+<!-- Hidden form for API key generation (outside main form to avoid nesting) -->
+<form method="POST" id="generateApiKeyForm" style="display:none">
+    <input type="hidden" name="csrf" value="<?= generateCSRF() ?>">
+    <input type="hidden" name="generate_api_key" value="1">
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('generateApiKeyBtn');
+    const form = document.getElementById('generateApiKeyForm');
+    if (btn && form) {
+        btn.addEventListener('click', function() {
+            const confirmMsg = btn.dataset.confirm;
+            if (!confirmMsg || confirm(confirmMsg)) {
+                form.submit();
+            }
+        });
+    }
+});
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
